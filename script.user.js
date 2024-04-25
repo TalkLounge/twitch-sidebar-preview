@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Twitch Sidebar Thumbnail Preview
 // @name:de         Twitch Seitenleiste Vorschaubild
-// @version         1.0.0
+// @version         1.0.1
 // @description     Hover over Channel in the Sidebar to see a Thumbnail Preview of the Stream on Twitch
 // @description:de  Bewege den Mauszeiger über einen Kanal in der Seitenleiste, um ein Vorschaubild des Streams zu sehen auf Twitch
 // @icon            https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png
@@ -26,25 +26,22 @@
         return tag;
     }
 
-    async function addThumbnail(element, count) {
+    async function addThumbnail(element) {
         if (element.querySelector(".side-nav-card__avatar--offline")) { // Channel is offline
             return;
         }
 
-        const dialog = document.querySelector(".tw-dialog-layer p");
-        if (!dialog) { // Popup not ready
-            if (!count) {
-                count = 0;
-            }
+        let dialog, count = 0;
+        do { // Wait until Popup is ready
+            await new Promise(r => setTimeout(r, 10));
             count++;
 
-            if (count >= 10) {
+            if (count > 50) {
                 return;
             }
 
-            await new Promise(r => setTimeout(r, 50));
-            return addThumbnail(...arguments);
-        }
+            dialog = document.querySelector(".tw-dialog-layer:has(.hidden-focusable-elem) p");
+        } while (!dialog);
 
         dialog.parentNode.style.width = "440px";
         dialog.parentNode.querySelector("img")?.remove();
