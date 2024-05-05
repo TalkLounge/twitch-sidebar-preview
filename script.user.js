@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Twitch Sidebar Thumbnail Preview
 // @name:de         Twitch Seitenleiste Vorschaubild
-// @version         1.0.1
+// @version         1.0.2
 // @description     Hover over Channel in the Sidebar to see a Thumbnail Preview of the Stream on Twitch
 // @description:de  Bewege den Mauszeiger über einen Kanal in der Seitenleiste, um ein Vorschaubild des Streams zu sehen auf Twitch
 // @icon            https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png
@@ -13,7 +13,7 @@
 
 (function () {
     'use strict';
-    let cache = {};
+    let cache = {}, eventCount = 0;
 
     function newElement(tagName, attributes, content) {
         var tag = document.createElement(tagName);
@@ -26,17 +26,17 @@
         return tag;
     }
 
-    async function addThumbnail(element) {
+    async function addThumbnail(element, eventCountLocal) {
         if (element.querySelector(".side-nav-card__avatar--offline")) { // Channel is offline
             return;
         }
 
-        let dialog, count = 0;
+        let dialog, timeoutCount = 0;
         do { // Wait until Popup is ready
             await new Promise(r => setTimeout(r, 10));
-            count++;
+            timeoutCount++;
 
-            if (count > 50) {
+            if (timeoutCount > 50 || eventCountLocal != eventCount) { // Dialog timeout or newer mouseenter event called
                 return;
             }
 
@@ -54,8 +54,14 @@
     }
 
     function addHoverEvent(element) {
+        if ([...element.classList].includes("tsp")) { // Already added
+            return;
+        }
+
+        element.classList.add("tsp");
         element.addEventListener("mouseenter", () => {
-            addThumbnail(element);
+            eventCount++;
+            addThumbnail(element, eventCount);
         });
     }
 
@@ -83,11 +89,9 @@
 
             const observer = new MutationObserver((mutationList) => { // Check for new channels in channel list added by click on show more
                 for (const mutation of mutationList) {
-                    if (!mutation.addedNodes) {
-                        continue;
+                    for (let j = 0; j < mutation.addedNodes.length; j++) {
+                        addHoverEvent(mutation.addedNodes[j]);
                     }
-
-                    addHoverEvent(mutation.addedNodes[0]);
                 }
             });
             observer.observe(uls[i], { childList: true });
